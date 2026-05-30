@@ -1,0 +1,17 @@
+@{ ViewData["Title"] = "Error"; Layout = "_Layout"; var code = ViewBag.Code as string; }
+<div style="text-align:center;padding:80px 24px;min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    @if (code == "404") {
+        <div style="font-family:var(--font-display);font-size:6rem;font-weight:600;color:var(--paper-3);line-height:1">404</div>
+        <h1 style="font-family:var(--font-display);font-size:2rem;font-weight:600;margin:12px 0 8px">Page not found</h1>
+        <p style="color:var(--ink-2);margin-bottom:28px">This page or menu doesn't exist, or may have been removed.</p>
+    } else if (code == "429") {
+        <div style="font-size:3rem;margin-bottom:16px">⏳</div>
+        <h1 style="font-family:var(--font-display);font-size:2rem;font-weight:600;margin:0 0 8px">Too many requests</h1>
+        <p style="color:var(--ink-2);margin-bottom:28px">Please wait a few minutes and try again.</p>
+    } else {
+        <div style="font-size:3rem;margin-bottom:16px">⚠️</div>
+        <h1 style="font-family:var(--font-display);font-size:2rem;font-weight:600;margin:0 0 8px">Something went wrong</h1>
+        <p style="color:var(--ink-2);margin-bottom:28px">An unexpected error occurred. Please try again.</p>
+    }
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Back to home</a>
+</div>

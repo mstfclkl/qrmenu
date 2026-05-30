@@ -1,0 +1,71 @@
+@model QrMenu.Application.DTOs.CreateRestaurantDto
+@{ ViewData["Title"] = "Create Restaurant"; }
+<div class="page-sm">
+    <div class="page-header"><h1>Create restaurant</h1><p>Fill in the details below. An admin will review and approve your listing.</p></div>
+    <div class="card">
+        <form asp-action="CreateRestaurant" method="post">@Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" style="color:var(--danger);margin-bottom:16px;font-size:0.9rem"></div>
+            <div class="form-group"><label asp-for="Name">Restaurant name *</label><input asp-for="Name" placeholder="e.g. Bella Cucina" /><span asp-validation-for="Name" style="color:var(--danger);font-size:0.82rem"></span></div>
+            <div class="form-group"><label asp-for="Description">Description</label><textarea asp-for="Description" placeholder="Short description shown on your menu page"></textarea></div>
+            <div class="form-row">
+                <div class="form-group"><label asp-for="Phone">Phone number</label><input asp-for="Phone" placeholder="+90 212 555 0100" /></div>
+                <div class="form-group"><label asp-for="Website">Website</label><input asp-for="Website" placeholder="https://yourrestaurant.com" /></div>
+            </div>
+            <div class="form-group"><label asp-for="Address">Address</label><input asp-for="Address" placeholder="Street, City" /></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="CurrencyCode">Currency</label>
+                    <select asp-for="CurrencyCode" onchange="updateSymbol(this)">
+                        <option value="TRY">Turkish Lira (₺)</option><option value="USD">US Dollar ($)</option>
+                        <option value="EUR">Euro (€)</option><option value="GBP">British Pound (£)</option>
+                        <option value="SAR">Saudi Riyal (﷼)</option><option value="AED">UAE Dirham (د.إ)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="SupportedLanguages">Menu language</label>
+                    <select asp-for="SupportedLanguages">
+                        <option value="tr">Turkish only</option><option value="tr,en">Turkish + English</option><option value="en">English only</option>
+                    </select>
+                </div>
+            </div>
+            <input type="hidden" asp-for="CurrencySymbol" id="currencySymbol" />
+            <div class="form-group">
+                <label asp-for="ThemeColor">Brand color</label>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <input type="color" id="ThemeColorPicker" value="#e85d26" style="width:60px;height:40px;padding:2px;border-radius:6px;cursor:pointer" oninput="document.getElementById('ThemeColor').value=this.value" />
+                    <input asp-for="ThemeColor" id="ThemeColor" placeholder="#e85d26" style="flex:1" oninput="document.getElementById('ThemeColorPicker').value=this.value" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:500;color:var(--ink-2);display:block;margin-bottom:10px">Opening hours</label>
+                <div style="display:grid;gap:8px">
+                    @foreach (var day in new[]{"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"}) {
+                        <div style="display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center">
+                            <span style="font-size:0.875rem;color:var(--ink-2)">@day</span>
+                            <div style="display:flex;gap:6px;align-items:center">
+                                <input type="time" name="hours_@(day)_open" min="00:00" max="23:59" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;flex:1" />
+                                <span style="color:var(--ink-3);font-size:0.85rem">–</span>
+                                <input type="time" name="hours_@(day)_close" min="00:00" max="23:59" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;flex:1" />
+                            </div>
+                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:var(--ink-2);cursor:pointer;white-space:nowrap">
+                                <input type="checkbox" name="hours_@(day)_closed" value="true" onchange="toggleDay(this,'@day')" />Closed
+                            </label>
+                        </div>
+                    }
+                </div>
+                <span class="form-hint">Leave empty to omit that day. Tick Closed to mark explicitly.</span>
+            </div>
+            <div class="btn-row" style="margin-top:24px">
+                <button type="submit" class="btn btn-primary">Create restaurant</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts {
+<script>
+const syms={TRY:"₺",USD:"$",EUR:"€",GBP:"£",SAR:"﷼",AED:"د.إ"};
+function updateSymbol(sel){document.getElementById("currencySymbol").value=syms[sel.value]||sel.value;}
+function toggleDay(cb,day){const c=cb.checked;["open","close"].forEach(t=>{const i=document.querySelector(`input[name="hours_${day}_${t}"]`);if(i){i.disabled=c;i.style.opacity=c?"0.4":"1";}});}
+</script>
+}

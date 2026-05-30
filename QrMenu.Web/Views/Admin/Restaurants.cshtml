@@ -1,0 +1,52 @@
+@model List<QrMenu.Application.DTOs.RestaurantDto>
+@{ ViewData["Title"] = "All Restaurants"; }
+<div class="page">
+    <div class="page-header"><h1>Restaurants</h1><p>Approve, activate and manage restaurants.</p></div>
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="position:relative;flex:1;min-width:200px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-3)">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by name, owner or slug..." style="width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.9rem" oninput="filterTable()" />
+        </div>
+        <select id="statusFilter" onchange="filterTable()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.9rem">
+            <option value="">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+    </div>
+    <div id="noResults" style="display:none;text-align:center;padding:40px;color:var(--ink-3)">No restaurants match.</div>
+    <div class="table-wrap"><table id="restaurantTable"><thead><tr><th>Name</th><th>Owner</th><th>Status</th><th>Items</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
+        @foreach (var r in Model.OrderByDescending(r=>r.CreatedAt)) {
+            var status = !r.IsApproved?"pending":r.IsActive?"active":"inactive";
+            <tr data-name="@r.Name.ToLower()" data-owner="@(r.OwnerName?.ToLower())" data-slug="@r.Slug" data-status="@status">
+                <td><strong>@r.Name</strong><div style="font-size:0.8rem;color:var(--ink-3)">@r.Slug</div></td>
+                <td>@(r.OwnerName??"—")</td>
+                <td>@if(!r.IsApproved){<span class="badge badge-warning">Pending</span>}else if(r.IsActive){<span class="badge badge-success">Active</span>}else{<span class="badge badge-danger">Inactive</span>}</td>
+                <td>@r.ItemCount</td>
+                <td style="font-size:0.82rem;color:var(--ink-3)">@r.CreatedAt.ToString("MMM d, yyyy")</td>
+                <td><div class="btn-row">
+                    <a asp-controller="Menu" asp-action="Index" asp-route-slug="@r.Slug" target="_blank" class="btn btn-ghost btn-sm">Preview</a>
+                    @if(!r.IsApproved){
+                        <form asp-action="Approve" asp-route-id="@r.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-success btn-sm">Approve</button></form>
+                        <button class="btn btn-danger btn-sm" onclick="showRejectModal(@r.Id, '@r.Name.Replace("'","\'")'')">Reject</button>
+                    }
+                    <form asp-action="Toggle" asp-route-id="@r.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-secondary btn-sm">@(r.IsActive?"Deactivate":"Activate")</button></form>
+                    <form asp-action="Delete" asp-route-id="@r.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-danger btn-sm" data-confirm="Delete @r.Name?">Delete</button></form>
+                </div></td>
+            </tr>
+        }
+    </tbody></table></div>
+</div>
+<div id="rejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:24px">
+    <div style="background:white;border-radius:14px;padding:32px;max-width:460px;width:100%">
+        <h3 style="font-family:var(--font-display);font-size:1.3rem;font-weight:600;margin-bottom:8px">Reject restaurant</h3>
+        <p id="rejectName" style="color:var(--ink-2);margin-bottom:16px;font-size:0.9rem"></p>
+        <form id="rejectForm" method="post">@Html.AntiForgeryToken()
+            <div class="form-group"><label>Reason (sent to owner)</label><textarea name="reason" rows="3" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:7px;font-family:var(--font-body)"></textarea></div>
+            <div class="btn-row"><button type="submit" class="btn btn-danger">Send rejection</button><button type="button" class="btn btn-secondary" onclick="document.getElementById('rejectModal').style.display='none'">Cancel</button></div>
+        </form>
+    </div>
+</div>
+@section Scripts {
+<script>
+function showRejectModal(id,name){document.getElementById('rejectName').textContent='Restaurant: '+name;document.getElementById('rejectForm').action='/admin/restaurants/'+id+'/reject';document.getElementById('rejectModal').style.display='flex';}
+function filterTable(){const s=document.getElementById('searchInput').value.toLowerCase();const st=document.getElementById('statusFilter').value;let v=0;document.querySelectorAll('#restaurantTable tbody tr').forEach(r=>{const show=(!s||r.dataset.name?.includes(s)||r.dataset.owner?.includes(s)||r.dataset.slug?.includes(s))&&(!st||r.dataset.status===st);r.style.display=show?'':'none';if(show)v++;});document.getElementById('noResults').style.display=v===0?'':' none';}
+</script>
+}

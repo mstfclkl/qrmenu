@@ -1,0 +1,44 @@
+@model List<QrMenu.Application.DTOs.RestaurantDto>
+@{ ViewData["Title"] = "QRMenu — Digital Menus for Modern Restaurants"; Layout = "_Layout"; }
+<section class="hero">
+    <h1>Beautiful menus,<br/><em>instantly accessible</em></h1>
+    <p>Create a stunning digital menu. Customers scan, you smile.</p>
+    <div class="hero-actions">
+        <a asp-controller="Account" asp-action="Register" class="btn btn-primary">Start for free</a>
+        <a href="#restaurants" class="btn btn-outline">Browse menus</a>
+    </div>
+</section>
+<div class="page">
+    @if (Model.Any())
+    {
+        <div id="restaurants" class="page-header"><h2 style="font-family:var(--font-display);font-size:1.8rem;font-weight:600">Live restaurants</h2></div>
+        <div class="card-grid">
+            @foreach (var r in Model)
+            {
+                <a asp-controller="Menu" asp-action="Index" asp-route-slug="@r.Slug" class="restaurant-card" style="display:block;color:inherit;">
+                    <div class="restaurant-card-cover" style="background:@(r.ThemeColor??"#1a1714")">
+                        @if (r.LogoUrl != null) { <img src="@r.LogoUrl" alt="@r.Name" /> }
+                        else { <span style="color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:2.5rem;font-weight:600">@r.Name[0]</span> }
+                    </div>
+                    <div class="restaurant-card-body">
+                        <h3>@r.Name</h3>
+                        <p>@(r.Description ?? "View the full menu")</p>
+                        <div class="restaurant-card-meta">
+                            <span class="badge badge-success">Live</span>
+                            <span class="badge badge-neutral">@r.CategoryCount categories</span>
+                            <span class="badge badge-neutral">@r.ItemCount items</span>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div style="text-align:center;padding:80px 24px;color:var(--ink-3)">
+            <div style="font-size:3rem;margin-bottom:16px">🍽</div>
+            <p style="font-size:1.1rem">No restaurants live yet. Be the first!</p>
+            <a asp-controller="Account" asp-action="Register" class="btn btn-primary" style="margin-top:20px">Open your restaurant</a>
+        </div>
+    }
+</div>

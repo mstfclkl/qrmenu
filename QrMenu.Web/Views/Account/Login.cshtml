@@ -1,0 +1,36 @@
+@{ ViewData["Title"] = "Sign in"; Layout = "_Layout"; }
+<div class="auth-page">
+    <div class="auth-card">
+        <h2>Welcome back</h2>
+        <p>Sign in to manage your restaurant menus.</p>
+        <div asp-validation-summary="ModelOnly" style="color:var(--danger);margin-bottom:16px;font-size:0.9rem;background:#fde8e6;padding:12px;border-radius:7px"></div>
+        <form asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" name="email" id="email" placeholder="you@example.com" required autocomplete="email" />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" placeholder="••••••••" required autocomplete="current-password" />
+            </div>
+            <div style="text-align:right;margin-bottom:12px">
+                <a asp-action="ForgotPassword" style="font-size:0.85rem;color:var(--ink-3)">Forgot password?</a>
+            </div>
+            <label class="input-checkbox" style="margin-bottom:20px">
+                <input type="checkbox" name="rememberMe" />
+                <span style="font-size:0.9rem;color:var(--ink-2)">Remember me</span>
+            </label>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px">Sign in</button>
+        </form>
+        <hr class="divider" style="margin:24px 0" />
+        <p style="text-align:center;font-size:0.875rem;color:var(--ink-2)">Don't have an account? <a asp-action="Register">Create one →</a></p>
+        <div style="margin-top:20px;padding:14px;background:var(--paper-2);border-radius:8px;font-size:0.8rem;color:var(--ink-3)">
+            <strong style="color:var(--ink-2)">Demo credentials</strong><br/>
+            Admin: admin@qrmenu.com / Admin@123456!<br/>
+            Owner: owner@demo.com / Owner@123456!<br/>
+            <span style="color:var(--warning)">⚠ Accounts lock 15 min after 5 failed attempts.</span>
+        </div>
+    </div>
+</div>

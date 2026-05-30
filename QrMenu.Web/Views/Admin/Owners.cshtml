@@ -1,0 +1,22 @@
+@model List<QrMenu.Application.DTOs.UserDto>
+@{ ViewData["Title"] = "Restaurant Owners"; }
+<div class="page">
+    <div class="page-header-row page-header">
+        <div><h1>Restaurant owners</h1><p>Manage owner accounts and their platform access.</p></div>
+        <a asp-action="CreateOwner" class="btn btn-primary">+ Create owner</a>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Owner</th><th>Email</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
+        @foreach (var u in Model.OrderByDescending(u=>u.CreatedAt)) {
+            <tr>
+                <td><strong>@u.FullName</strong></td>
+                <td style="color:var(--ink-2)">@u.Email</td>
+                <td>@if(u.IsActive){<span class="badge badge-success">Active</span>}else{<span class="badge badge-danger">Suspended</span>}</td>
+                <td style="font-size:0.82rem;color:var(--ink-3)">@u.CreatedAt.ToString("MMM d, yyyy")</td>
+                <td><div class="btn-row">
+                    @if(u.IsActive){<form asp-action="DeactivateOwner" asp-route-id="@u.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-danger btn-sm" data-confirm="Suspend @u.FullName?">Suspend</button></form>}
+                    else{<form asp-action="ActivateOwner" asp-route-id="@u.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-success btn-sm">Reactivate</button></form>}
+                </div></td>
+            </tr>
+        }
+    </tbody></table></div>
+</div>

@@ -1,0 +1,185 @@
+@model QrMenu.Application.DTOs.PublicMenuDto
+@using System.Text.Json
+@{
+    ViewData["Title"] = Model.Restaurant.Name + " — Menu";
+    ViewData["MetaDescription"] = Model.Restaurant.Description ?? $"View the menu for {Model.Restaurant.Name}";
+    ViewData["MetaImage"] = Model.Restaurant.LogoUrl ?? "";
+    ViewData["MetaUrl"] = $"{Context.Request.Scheme}://{Context.Request.Host}/menu/{Model.Restaurant.Slug}";
+    Layout = "_Layout";
+    var r = Model.Restaurant;
+    var theme = r.ThemeColor ?? "#c8420a";
+    var sym = r.CurrencySymbol ?? "₺";
+    var hasEn = r.SupportedLanguages.Contains("en");
+    OpeningHours? hours = null;
+    if (!string.IsNullOrEmpty(r.OpeningHoursJson))
+        try { hours = JsonSerializer.Deserialize<OpeningHours>(r.OpeningHoursJson); } catch { }
+    var now = DateTime.Now; var dayName = now.DayOfWeek.ToString();
+    string? todayHours = dayName switch {
+        "Monday"=>hours?.Monday,"Tuesday"=>hours?.Tuesday,"Wednesday"=>hours?.Wednesday,
+        "Thursday"=>hours?.Thursday,"Friday"=>hours?.Friday,"Saturday"=>hours?.Saturday,
+        "Sunday"=>hours?.Sunday,_=>null };
+    bool? isOpen = null;
+    if (!string.IsNullOrEmpty(todayHours) && todayHours != "Closed") {
+        var p = todayHours.Split('-');
+        if (p.Length==2 && TimeSpan.TryParse(p[0].Trim(),out var o) && TimeSpan.TryParse(p[1].Trim(),out var c))
+            isOpen = now.TimeOfDay >= o && now.TimeOfDay <= c;
+    } else if (todayHours == "Closed") isOpen = false;
+    var allTags = Model.Categories.SelectMany(c=>c.Items).SelectMany(i=>(i.Tags??"").Split(',',StringSplitOptions.RemoveEmptyEntries)).Select(t=>t.Trim()).Distinct().OrderBy(t=>t).ToList();
+    var allAllergens = Model.Categories.SelectMany(c=>c.Items).SelectMany(i=>(i.Allergens??"").Split(',',StringSplitOptions.RemoveEmptyEntries)).Select(a=>a.Trim()).Distinct().OrderBy(a=>a).ToList();
+    var dailySpecials = Model.Categories.SelectMany(c=>c.Items).Where(i=>i.IsDailySpecial).ToList();
+}
+<style>
+:root{--theme:@theme}
+.menu-tab.active{color:var(--theme);border-bottom-color:var(--theme)}
+.menu-item-price{color:var(--theme)}
+.menu-category h2{border-bottom-color:var(--theme)}
+.menu-item-tag{background:color-mix(in srgb,var(--theme) 12%,white);color:var(--theme)}
+.lang-btn.active,.filter-chip.active{background:var(--theme);color:white;border-color:var(--theme)}
+</style>
+
+<div class="menu-hero" style="background:linear-gradient(to bottom,color-mix(in srgb,var(--theme) 8%,var(--paper)),var(--paper))">
+    @if (r.LogoUrl != null) { <img class="menu-logo" src="@r.LogoUrl" alt="@r.Name" /> }
+    else { <div class="menu-logo-placeholder" style="background:var(--theme)">@r.Name[0]</div> }
+    <h1>@r.Name</h1>
+    @if (r.Description != null) { <p>@r.Description</p> }
+    <div class="menu-hero-meta">
+        @if (r.Address != null) { <span>📍 @r.Address</span> }
+        @if (r.Phone != null) { <span>📞 <a href="tel:@r.Phone">@r.Phone</a></span> }
+        @if (isOpen == true) { <span class="badge badge-success">Open now</span> }
+        else if (isOpen == false) { <span class="badge badge-danger">Closed</span> }
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+        @if (hasEn) {
+            <div class="lang-switcher">
+                <button class="lang-btn active" onclick="switchLang('tr')" id="btn-tr">🇹🇷 TR</button>
+                <button class="lang-btn" onclick="switchLang('en')" id="btn-en">🇬🇧 EN</button>
+            </div>
+        }
+        <button class="btn btn-secondary btn-sm" onclick="shareMenu()">🔗 Share</button>
+    </div>
+</div>
+
+@if (dailySpecials.Any()) {
+    <div style="background:color-mix(in srgb,var(--theme) 6%,white);border-top:2px solid var(--theme);border-bottom:2px solid var(--theme);padding:20px 24px">
+        <div style="max-width:800px;margin:0 auto">
+            <h2 style="font-family:var(--font-display);font-size:1.2rem;font-weight:600;margin-bottom:14px;color:var(--theme)">⭐ Today's Specials</h2>
+            <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px">
+                @foreach (var special in dailySpecials) {
+                    <div style="min-width:180px;background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;flex-shrink:0">
+                        @if (special.ImageUrl != null) { <img src="@special.ImageUrl" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:8px" /> }
+                        <div style="font-weight:500;font-size:0.9rem" class="item-name-tr">@special.Name</div>
+                        @if (hasEn && special.NameEn != null) { <div style="font-weight:500;font-size:0.9rem;display:none" class="item-name-en">@special.NameEn</div> }
+                        <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;color:var(--theme);margin-top:4px">@sym@special.Price.ToString("F2")</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<div style="background:white;border-bottom:1px solid var(--border);position:sticky;top:60px;z-index:60;padding:12px 24px">
+    <div style="max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+        <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3)">🔍</span>
+            <input id="searchInput" type="text" placeholder="Search menu items..." style="width:100%;padding:9px 12px 9px 36px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.9rem" oninput="filterMenu()" />
+        </div>
+        @if (allTags.Any() || allAllergens.Any()) {
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:0.78rem;color:var(--ink-3)">Filter:</span>
+                @foreach (var tag in allTags) { <button class="filter-chip" data-filter="tag:@tag" onclick="toggleFilter(this)">@tag</button> }
+                @foreach (var al in allAllergens.Take(5)) { <button class="filter-chip" data-filter="allergen:@al" onclick="toggleFilter(this)">No @al</button> }
+                <button class="filter-chip" data-filter="available" onclick="toggleFilter(this)">Available only</button>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Categories.Any()) {
+    <div class="menu-tabs">
+        <div class="menu-tabs-inner">
+            @foreach (var cat in Model.Categories) {
+                <a class="menu-tab" data-target="cat-@cat.Id" href="#cat-@cat.Id">
+                    <span class="item-name-tr">@cat.Name</span>
+                    @if (hasEn && cat.NameEn != null) { <span class="item-name-en" style="display:none">@cat.NameEn</span> }
+                </a>
+            }
+        </div>
+    </div>
+    <div class="menu-content">
+        <div id="noResults" style="display:none;text-align:center;padding:40px;color:var(--ink-3)">No items match your search.</div>
+        @foreach (var cat in Model.Categories) {
+            <section class="menu-category" id="cat-@cat.Id" data-category>
+                <h2>
+                    <span class="item-name-tr">@cat.Name</span>
+                    @if (hasEn && cat.NameEn != null) { <span class="item-name-en" style="display:none">@cat.NameEn</span> }
+                </h2>
+                <div class="menu-items-grid">
+                    @foreach (var item in cat.Items) {
+                        var unavailable = !item.IsAvailable || item.IsSoldOut;
+                        var tags = (item.Tags??"").Split(',',StringSplitOptions.RemoveEmptyEntries).Select(t=>t.Trim()).ToList();
+                        var allergens = (item.Allergens??"").Split(',',StringSplitOptions.RemoveEmptyEntries).Select(a=>a.Trim()).ToList();
+                        <div class="menu-item-card @(unavailable?"menu-item-unavailable":"") @(item.IsFeatured?"menu-item-featured":"")"
+                             data-item data-name="@item.Name.ToLower() @(item.NameEn?.ToLower())"
+                             data-tags="@item.Tags?.ToLower()" data-allergens="@item.Allergens?.ToLower()"
+                             data-available="@item.IsAvailable.ToString().ToLower()">
+                            @if (item.ImageUrl != null) { <img class="menu-item-img" src="@item.ImageUrl" alt="@item.Name" loading="lazy" /> }
+                            else { <div class="menu-item-img-placeholder">🍽</div> }
+                            <div class="menu-item-info">
+                                <div class="menu-item-name">
+                                    <span class="item-name-tr">@item.Name</span>
+                                    @if (hasEn && item.NameEn != null) { <span class="item-name-en" style="display:none">@item.NameEn</span> }
+                                    @if (item.IsFeatured) { <span>⭐</span> }
+                                    @if (item.IsDailySpecial) { <span class="badge badge-accent" style="font-size:0.7rem;margin-left:4px">Special</span> }
+                                    @if (item.IsSoldOut) { <span class="badge badge-danger" style="margin-left:4px">Sold out</span> }
+                                    else if (!item.IsAvailable) { <span class="badge badge-neutral" style="margin-left:4px">Unavailable</span> }
+                                </div>
+                                @if (item.Description != null || (hasEn && item.DescriptionEn != null)) {
+                                    <div class="menu-item-desc">
+                                        <span class="item-name-tr">@item.Description</span>
+                                        @if (hasEn && item.DescriptionEn != null) { <span class="item-name-en" style="display:none">@item.DescriptionEn</span> }
+                                    </div>
+                                }
+                                @if (tags.Any()) { <div class="menu-item-tags">@foreach (var t in tags) { <span class="menu-item-tag">@t</span> }</div> }
+                                @if (allergens.Any()) { <div style="font-size:0.78rem;color:var(--ink-3)">⚠ @string.Join(", ",allergens)</div> }
+                            </div>
+                            <div class="menu-item-price">@sym@item.Price.ToString("F2")</div>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+}
+
+@if (hours != null) {
+    <div style="max-width:800px;margin:0 auto;padding:0 24px 40px">
+        <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:14px">🕐 Opening hours</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:0.9rem">
+                @{
+                    var days = new[]{("Monday",hours.Monday),("Tuesday",hours.Tuesday),("Wednesday",hours.Wednesday),("Thursday",hours.Thursday),("Friday",hours.Friday),("Saturday",hours.Saturday),("Sunday",hours.Sunday)};
+                }
+                @foreach (var (day, h) in days) {
+                    if (h == null) { continue; }
+                    var isToday = day == dayName;
+                    <div style="display:flex;justify-content:space-between;padding:4px 0;@(isToday ? "font-weight:600;color:var(--theme)" : "color:var(--ink-2)")">
+                        <span>@day</span><span>@h</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<div id="shareToast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:99px;font-size:0.875rem;z-index:9999">✓ Link copied!</div>
+
+@section Scripts {
+<script>
+let activeFilters=new Set();
+function switchLang(l){document.querySelectorAll('.item-name-tr').forEach(e=>e.style.display=l==='tr'?'':'none');document.querySelectorAll('.item-name-en').forEach(e=>e.style.display=l==='en'?'':'none');document.getElementById('btn-tr').classList.toggle('active',l==='tr');document.getElementById('btn-en').classList.toggle('active',l==='en');}
+function toggleFilter(btn){const f=btn.dataset.filter;if(activeFilters.has(f)){activeFilters.delete(f);btn.classList.remove('active');}else{activeFilters.add(f);btn.classList.add('active');}applyFilters();}
+function filterMenu(){applyFilters();}
+function applyFilters(){const s=document.getElementById('searchInput').value.toLowerCase().trim();let v=0;document.querySelectorAll('[data-item]').forEach(c=>{const n=c.dataset.name||'',t=c.dataset.tags||'',a=c.dataset.allergens||'',av=c.dataset.available==='true';let show=(!s||n.includes(s));for(const f of activeFilters){if(f==='available'&&!av){show=false;break;}if(f.startsWith('tag:')&&!t.includes(f.slice(4))){show=false;break;}if(f.startsWith('allergen:')&&a.includes(f.slice(9))){show=false;break;}}c.style.display=show?'':'none';if(show)v++;});document.querySelectorAll('[data-category]').forEach(s=>{const vis=s.querySelectorAll('[data-item]:not([style*="display: none"])').length;s.style.display=vis?'':'none';});document.getElementById('noResults').style.display=v===0?'':'none';}
+function shareMenu(){const url=window.location.href;if(navigator.share){navigator.share({title:'@r.Name',url});}else{navigator.clipboard.writeText(url).then(()=>{const t=document.getElementById('shareToast');t.style.display='block';setTimeout(()=>t.style.display='none',2500);});}}
+</script>
+}

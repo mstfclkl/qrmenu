@@ -1,0 +1,33 @@
+@{ ViewData["Title"] = "Admin Dashboard"; var restaurants = ViewBag.Restaurants as List<QrMenu.Application.DTOs.RestaurantDto> ?? new(); var owners = ViewBag.Owners as List<QrMenu.Application.DTOs.UserDto> ?? new(); }
+<div class="page">
+    <div class="page-header"><h1>Admin dashboard</h1><p>Monitor restaurants and manage owners.</p></div>
+    <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Total restaurants</div><div class="stat-value">@restaurants.Count</div></div>
+        <div class="stat-card"><div class="stat-label">Active & live</div><div class="stat-value accent">@ViewBag.ActiveCount</div></div>
+        <div class="stat-card"><div class="stat-label">Pending approval</div><div class="stat-value" style="color:var(--warning)">@ViewBag.PendingCount</div></div>
+        <div class="stat-card"><div class="stat-label">Restaurant owners</div><div class="stat-value">@ViewBag.TotalOwners</div></div>
+    </div>
+    @if ((int)(ViewBag.PendingCount ?? 0) > 0) {
+        <div style="background:var(--accent-light);border:1px solid rgba(200,66,10,0.2);border-radius:var(--radius);padding:16px 20px;margin-bottom:32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <span style="font-weight:500;color:var(--accent)">@ViewBag.PendingCount restaurant(s) awaiting approval</span>
+            <a asp-action="Restaurants" class="btn btn-primary btn-sm">Review now</a>
+        </div>
+    }
+    <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:600;margin-bottom:16px">Recent restaurants</h2>
+    <div class="table-wrap"><table><thead><tr><th>Restaurant</th><th>Owner</th><th>Status</th><th>Items</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
+        @foreach (var r in restaurants.OrderByDescending(r=>r.CreatedAt).Take(10)) {
+            <tr>
+                <td><a asp-controller="Menu" asp-action="Index" asp-route-slug="@r.Slug" target="_blank">@r.Name</a><div style="font-size:0.8rem;color:var(--ink-3)">/menu/@r.Slug</div></td>
+                <td>@r.OwnerName</td>
+                <td>@if(!r.IsApproved){<span class="badge badge-warning">Pending</span>}else if(r.IsActive){<span class="badge badge-success">Active</span>}else{<span class="badge badge-danger">Inactive</span>}</td>
+                <td>@r.ItemCount</td>
+                <td style="font-size:0.85rem;color:var(--ink-3)">@r.CreatedAt.ToString("MMM d, yyyy")</td>
+                <td><div class="btn-row">
+                    @if(!r.IsApproved){<form asp-action="Approve" asp-route-id="@r.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-success btn-sm">Approve</button></form>}
+                    <form asp-action="Toggle" asp-route-id="@r.Id" method="post" class="inline">@Html.AntiForgeryToken()<button class="btn btn-secondary btn-sm">@(r.IsActive?"Deactivate":"Activate")</button></form>
+                </div></td>
+            </tr>
+        }
+    </tbody></table></div>
+    <div style="text-align:right;margin-top:16px"><a asp-action="Restaurants" class="btn btn-secondary">View all restaurants</a></div>
+</div>

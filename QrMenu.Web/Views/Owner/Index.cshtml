@@ -1,0 +1,43 @@
+@model List<QrMenu.Application.DTOs.RestaurantDto>
+@{ ViewData["Title"] = "My Restaurants"; }
+<div class="page">
+    <div class="page-header-row page-header">
+        <div><h1>My restaurants</h1><p>Manage your menus, upload images, and generate QR codes.</p></div>
+        <a asp-action="CreateRestaurant" class="btn btn-primary">+ Add restaurant</a>
+    </div>
+    @if (!Model.Any()) {
+        <div style="text-align:center;padding:64px 24px;background:white;border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:3rem;margin-bottom:16px">🍽</div>
+            <h3 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:8px">No restaurants yet</h3>
+            <p style="color:var(--ink-2);margin-bottom:20px">Create your first restaurant to start building your menu.</p>
+            <a asp-action="CreateRestaurant" class="btn btn-primary">Create restaurant</a>
+        </div>
+    } else {
+        <div class="card-grid">
+            @foreach (var r in Model) {
+                <div class="restaurant-card">
+                    <div class="restaurant-card-cover" style="background:@(r.ThemeColor??"#1a1714")">
+                        @if (r.LogoUrl != null) { <img src="@r.LogoUrl" alt="@r.Name" /> }
+                        else { <span style="color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:2.5rem;font-weight:600">@r.Name[0]</span> }
+                    </div>
+                    <div class="restaurant-card-body">
+                        <h3>@r.Name</h3>
+                        <p>@(r.Description ?? "No description yet.")</p>
+                        <div class="restaurant-card-meta" style="margin-bottom:14px">
+                            @if(!r.IsApproved){<span class="badge badge-warning">Pending approval</span>}
+                            else if(r.IsActive){<span class="badge badge-success">Live</span>}
+                            else{<span class="badge badge-danger">Inactive</span>}
+                            <span class="badge badge-neutral">@r.CategoryCount categories</span>
+                            <span class="badge badge-neutral">@r.ItemCount items</span>
+                        </div>
+                        <div class="btn-row">
+                            <a asp-action="ManageRestaurant" asp-route-id="@r.Id" class="btn btn-primary btn-sm">Manage menu</a>
+                            @if(r.IsApproved){<a asp-controller="Menu" asp-action="Index" asp-route-slug="@r.Slug" target="_blank" class="btn btn-secondary btn-sm">Preview</a>}
+                            <a asp-action="Stats" asp-route-id="@r.Id" class="btn btn-ghost btn-sm">📊</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

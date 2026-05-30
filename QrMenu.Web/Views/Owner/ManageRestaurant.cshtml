@@ -1,0 +1,246 @@
+@using QrMenu.Application.DTOs
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Manage Menu";
+    var restaurant = ViewBag.Restaurant as RestaurantDto;
+    var categories = ViewBag.Categories as List<CategoryDto> ?? new();
+}
+
+<div class="page">
+    <div class="page-header-row page-header">
+        <div>
+            <h1>@restaurant!.Name</h1>
+            <p>
+                @if (!restaurant.IsApproved) { <span class="badge badge-warning">Awaiting approval</span> }
+                else if (restaurant.IsActive) { <span class="badge badge-success">Live</span> }
+                else { <span class="badge badge-danger">Inactive</span> }
+                &nbsp; @restaurant.CategoryCount categories · @restaurant.ItemCount items
+            </p>
+        </div>
+        <div class="btn-row">
+            @if (restaurant.IsApproved) { <a asp-controller="Menu" asp-action="Index" asp-route-slug="@restaurant.Slug" target="_blank" class="btn btn-secondary">Preview ↗</a> }
+            <a asp-action="Stats" asp-route-id="@restaurant.Id" class="btn btn-secondary">📊 Stats</a>
+            <a asp-action="Index" class="btn btn-ghost">← All restaurants</a>
+        </div>
+    </div>
+
+    <div class="manage-grid">
+        <!-- ── Menu editor ─────────────────────────── -->
+        <div>
+            <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:600;margin-bottom:20px">Menu categories</h2>
+
+            @foreach (var category in categories)
+            {
+                <div class="category-section">
+                    <div class="category-header">
+                        <h3>@category.Name <span style="font-weight:400;font-size:0.85rem;color:var(--ink-3)">(@category.ItemCount items)</span></h3>
+                        <div class="btn-row">
+                            <a asp-action="CreateItem" asp-route-categoryId="@category.Id" asp-route-restaurantId="@restaurant.Id" class="btn btn-primary btn-sm">+ Add item</a>
+                            <form asp-action="DeleteCategory" method="post" class="inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@category.Id" />
+                                <input type="hidden" name="restaurantId" value="@restaurant.Id" />
+                                <button class="btn btn-ghost btn-sm" data-confirm="Delete category '@category.Name' and all its items?">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="category-body">
+                        @if (!category.Items.Any())
+                        {
+                            <div style="padding:20px;text-align:center;color:var(--ink-3);font-size:0.875rem">
+                                No items yet. <a asp-action="CreateItem" asp-route-categoryId="@category.Id" asp-route-restaurantId="@restaurant.Id">Add the first one →</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="item-list" style="padding:12px">
+                                @foreach (var item in category.Items)
+                                {
+                                    <div class="item-row">
+                                        <div class="item-row-img">
+                                            @if (item.ImageUrl != null) { <img src="@item.ImageUrl" alt="@item.Name" /> }
+                                            else { <span>🍽</span> }
+                                        </div>
+                                        <div class="item-row-info">
+                                            <h4>
+                                                @item.Name
+                                                @if (item.IsSoldOut) { <span class="badge badge-danger" style="font-size:0.7rem">Sold out</span> }
+                                                else if (!item.IsAvailable) { <span class="badge badge-neutral" style="font-size:0.7rem">Hidden</span> }
+                                            </h4>
+                                            <p>@(item.Description ?? "No description")</p>
+                                        </div>
+                                        <div class="item-row-price">@restaurant.CurrencySymbol@item.Price.ToString("F2")</div>
+                                        <div class="item-row-actions">
+                                            <a asp-action="EditItem" asp-route-id="@item.Id" asp-route-restaurantId="@restaurant.Id" class="btn btn-secondary btn-sm">Edit</a>
+
+                                            @* ToggleSoldOut — id is route param *@
+                                            <form asp-action="ToggleSoldOut" asp-route-id="@item.Id" method="post" class="inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="restaurantId" value="@restaurant.Id" />
+                                                <button class="btn btn-ghost btn-sm" title="@(item.IsSoldOut ? "Mark available" : "Mark sold out")" style="@(item.IsSoldOut ? "color:var(--danger)" : "color:var(--success)")">
+                                                    @(item.IsSoldOut ? "🔴" : "🟢")
+                                                </button>
+                                            </form>
+
+                                            @* ToggleItem — id is route param *@
+                                            <form asp-action="ToggleItem" asp-route-id="@item.Id" method="post" class="inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="restaurantId" value="@restaurant.Id" />
+                                                <button class="btn btn-ghost btn-sm" title="@(item.IsAvailable ? "Hide item" : "Show item")">
+                                                    @(item.IsAvailable ? "⏸" : "▶")
+                                                </button>
+                                            </form>
+
+                                            @* DeleteItem — id is route param *@
+                                            <form asp-action="DeleteItem" asp-route-id="@item.Id" method="post" class="inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="restaurantId" value="@restaurant.Id" />
+                                                <button class="btn btn-ghost btn-sm" data-confirm="Delete '@item.Name'?">🗑</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Add category -->
+            <div class="card" style="margin-top:8px">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:16px">Add category</h3>
+                <form asp-action="CreateCategory" asp-route-restaurantId="@restaurant.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div style="display:flex;gap:10px;align-items:flex-end">
+                        <div class="form-group" style="flex:1;margin-bottom:0">
+                            <label>Category name</label>
+                            <input type="text" name="Name" placeholder="e.g. Starters, Mains, Drinks" required autocomplete="off" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ── Sidebar ─────────────────────────────── -->
+        <div>
+            <!-- Restaurant settings -->
+            <div class="card" style="margin-bottom:20px">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:16px">Restaurant details</h3>
+                <form asp-action="UpdateRestaurant" asp-route-id="@restaurant.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="form-group"><label>Name</label><input name="Name" value="@restaurant.Name" required /></div>
+                    <div class="form-group"><label>Description</label><textarea name="Description" rows="2">@restaurant.Description</textarea></div>
+                    <div class="form-group"><label>Phone</label><input name="Phone" value="@restaurant.Phone" /></div>
+                    <div class="form-group"><label>Address</label><input name="Address" value="@restaurant.Address" /></div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select name="CurrencyCode" onchange="updateSym(this)" id="currSel">
+                            @{ var cc = restaurant.CurrencyCode; }
+                            <option value="TRY" selected="@(cc=="TRY")">Turkish Lira (₺)</option>
+                            <option value="USD" selected="@(cc=="USD")">US Dollar ($)</option>
+                            <option value="EUR" selected="@(cc=="EUR")">Euro (€)</option>
+                            <option value="GBP" selected="@(cc=="GBP")">British Pound (£)</option>
+                            <option value="SAR" selected="@(cc=="SAR")">Saudi Riyal (﷼)</option>
+                            <option value="AED" selected="@(cc=="AED")">UAE Dirham (د.إ)</option>
+                        </select>
+                        <input type="hidden" name="CurrencySymbol" id="mgSym" value="@restaurant.CurrencySymbol" />
+                    </div>
+                    <div class="form-group">
+                        <label>Menu language</label>
+                        <select name="SupportedLanguages">
+                            @{ var sl = restaurant.SupportedLanguages; }
+                            <option value="tr" selected="@(sl=="tr")">Turkish only</option>
+                            <option value="tr,en" selected="@(sl=="tr,en")">Turkish + English</option>
+                            <option value="en" selected="@(sl=="en")">English only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Brand color</label>
+                        <div style="display:flex;gap:10px;align-items:center">
+                            <input type="color" id="mgColorPicker" value="@restaurant.ThemeColor" style="width:60px;height:40px;padding:2px;border-radius:6px;cursor:pointer;flex-shrink:0" oninput="document.getElementById('mgThemeColor').value=this.value" />
+                            <input type="text" name="ThemeColor" id="mgThemeColor" value="@restaurant.ThemeColor" placeholder="#e85d26" style="flex:1" oninput="document.getElementById('mgColorPicker').value=this.value" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Save changes</button>
+                </form>
+            </div>
+
+            <!-- Opening hours -->
+            <div class="card" style="margin-bottom:20px">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:12px">🕐 Opening hours</h3>
+                <form asp-action="UpdateRestaurant" asp-route-id="@restaurant.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Name" value="@restaurant.Name" />
+                    <input type="hidden" name="CurrencyCode" value="@restaurant.CurrencyCode" />
+                    <input type="hidden" name="CurrencySymbol" value="@restaurant.CurrencySymbol" />
+                    <input type="hidden" name="SupportedLanguages" value="@restaurant.SupportedLanguages" />
+                    <input type="hidden" name="ThemeColor" value="@restaurant.ThemeColor" />
+                    @{
+                        System.Text.Json.JsonElement? hoursObj = null;
+                        if (!string.IsNullOrEmpty(restaurant.OpeningHoursJson))
+                            try { hoursObj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(restaurant.OpeningHoursJson); } catch { }
+                        string GetDay(string d) { if (hoursObj.HasValue && hoursObj.Value.TryGetProperty(d, out var v)) return v.GetString() ?? ""; return ""; }
+                    }
+                    @foreach (var day in new[]{"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"})
+                    {
+                        var existing = GetDay(day);
+                        var isClosed = existing == "Closed";
+                        var openVal = "";
+                        var closeVal = "";
+                        if (!isClosed && existing.Contains('-')) { var p = existing.Split('-'); openVal = p[0].Trim(); closeVal = p.Length > 1 ? p[1].Trim() : ""; }
+                        <div style="margin-bottom:8px">
+                            <div style="font-size:0.78rem;color:var(--ink-3);margin-bottom:3px">@day</div>
+                            <div style="display:flex;gap:5px;align-items:center">
+                                <input type="time" name="hours_@(day)_open" value="@openVal" id="open_@day" style="padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;flex:1;@(isClosed?"opacity:0.4;pointer-events:none":"")" />
+                                <span style="color:var(--ink-3);font-size:0.8rem">–</span>
+                                <input type="time" name="hours_@(day)_close" value="@closeVal" id="close_@day" style="padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:0.8rem;flex:1;@(isClosed?"opacity:0.4;pointer-events:none":"")" />
+                                <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;color:var(--ink-2);cursor:pointer;white-space:nowrap">
+                                    <input type="checkbox" name="hours_@(day)_closed" value="true" @(isClosed?"checked":"") onchange="toggleDay(this,'@day')" />Closed
+                                </label>
+                            </div>
+                        </div>
+                    }
+                    <button type="submit" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px">Save hours</button>
+                </form>
+            </div>
+
+            <!-- Logo upload -->
+            <div class="card" style="margin-bottom:20px">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:12px">Logo</h3>
+                @if (restaurant.LogoUrl != null) { <img src="@restaurant.LogoUrl" style="width:80px;height:80px;object-fit:cover;border-radius:50%;margin-bottom:12px;border:2px solid var(--border)" /> }
+                <form asp-action="UploadLogo" asp-route-id="@restaurant.Id" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="file" name="file" accept="image/*" style="font-size:0.85rem;margin-bottom:10px;display:block" />
+                    <button type="submit" class="btn btn-secondary btn-sm">Upload logo</button>
+                </form>
+            </div>
+
+            <!-- QR code -->
+            <div class="card">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:12px">QR code</h3>
+                @if (restaurant.QrCodeUrl != null) {
+                    <div class="qr-container" style="margin-bottom:12px"><img src="@restaurant.QrCodeUrl" alt="QR code" /></div>
+                    <a href="@restaurant.QrCodeUrl" download="@(restaurant.Slug)-qr.png" class="btn btn-secondary btn-sm" style="display:block;text-align:center;margin-bottom:8px">Download QR</a>
+                } else {
+                    <p style="font-size:0.875rem;color:var(--ink-3);margin-bottom:12px">Generate a QR code for your table cards.</p>
+                }
+                <a asp-action="GenerateQr" asp-route-id="@restaurant.Id" class="btn btn-primary btn-sm" style="display:block;text-align:center">
+                    @(restaurant.QrCodeUrl != null ? "Regenerate QR" : "Generate QR code")
+                </a>
+                @if (restaurant.IsApproved) {
+                    <div style="margin-top:12px;padding:10px;background:var(--paper-2);border-radius:6px;font-size:0.8rem;color:var(--ink-2);word-break:break-all">🔗 /menu/@restaurant.Slug</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@@media (max-width: 768px) { .manage-grid { grid-template-columns: 1fr !important; } }
+</style>
+<script>
+const syms={TRY:"₺",USD:"$",EUR:"€",GBP:"£",SAR:"﷼",AED:"د.إ"};
+function updateSym(sel){document.getElementById("mgSym").value=syms[sel.value]||sel.value;}
+function toggleDay(cb,day){const c=cb.checked;const o=document.getElementById("open_"+day);const cl=document.getElementById("close_"+day);if(o){o.disabled=c;o.style.opacity=c?"0.4":"1";o.style.pointerEvents=c?"none":"";}if(cl){cl.disabled=c;cl.style.opacity=c?"0.4":"1";cl.style.pointerEvents=c?"none":"";}}
+</script>

@@ -1,0 +1,27 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+publish/
+
+## Database — never commit
+*.db
+*.db-shm
+*.db-wal
+
+## Secrets — never commit
+appsettings.Development.json
+secrets.json
+
+## Uploads — keep folder structure via empty dirs
+**/wwwroot/uploads/**
+!**/wwwroot/uploads/logos/.gitkeep
+!**/wwwroot/uploads/items/.gitkeep
+**/wwwroot/qr/**
+!**/wwwroot/qr/.gitkeep
+
+## OS
+.DS_Store
+Thumbs.db

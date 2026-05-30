@@ -1,0 +1,18 @@
+@model List<QrMenu.Domain.Entities.AuditLog>
+@{ ViewData["Title"] = "Audit Log"; }
+<div class="page">
+    <div class="page-header"><h1>Audit log</h1><p>Last 200 security-relevant actions.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th></tr></thead><tbody>
+        @foreach (var log in Model) {
+            var bc = log.Action.Contains("Delete")?"badge-danger":log.Action.Contains("Failed")||log.Action.Contains("Locked")?"badge-warning":log.Action.Contains("Login")||log.Action.Contains("Verified")||log.Action.Contains("Approve")?"badge-success":"badge-neutral";
+            <tr>
+                <td style="font-size:0.82rem;color:var(--ink-3);white-space:nowrap">@log.Timestamp.ToLocalTime().ToString("MMM d, HH:mm:ss")</td>
+                <td style="font-size:0.85rem">@log.UserEmail</td>
+                <td><span class="badge @bc">@log.Action</span></td>
+                <td style="font-size:0.82rem;color:var(--ink-2)">@log.EntityType @(log.EntityId!=null?$"#{log.EntityId}":"")</td>
+                <td style="font-size:0.82rem;color:var(--ink-3)">@(log.Details??"—")</td>
+                <td style="font-size:0.82rem;color:var(--ink-3)">@(log.IpAddress??"—")</td>
+            </tr>
+        }
+    </tbody></table></div>
+</div>

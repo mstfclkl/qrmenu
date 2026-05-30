@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — QRMenu</title>
+    @if (ViewData["MetaDescription"] != null)
+    {
+        <meta name="description" content="@ViewData["MetaDescription"]" />
+        <meta property="og:title" content="@ViewData["Title"]" />
+        <meta property="og:description" content="@ViewData["MetaDescription"]" />
+        <meta property="og:type" content="website" />
+        @if (ViewData["MetaUrl"] != null) { <meta property="og:url" content="@ViewData["MetaUrl"]" /> }
+        @if (!string.IsNullOrEmpty(ViewData["MetaImage"]?.ToString())) { <meta property="og:image" content="@ViewData["MetaImage"]" /> }
+        <meta name="twitter:card" content="summary" />
+    }
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a class="nav-brand" asp-controller="Home" asp-action="Index">▦ QRMenu</a>
+            <div class="nav-links">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-controller="Admin" asp-action="Dashboard">Dashboard</a>
+                        <a asp-controller="Admin" asp-action="Restaurants">Restaurants</a>
+                        <a asp-controller="Admin" asp-action="Owners">Owners</a>
+                        <a asp-controller="Admin" asp-action="AuditLog">Audit</a>
+                    }
+                    else if (User.IsInRole("Owner"))
+                    {
+                        <a asp-controller="Owner" asp-action="Index">My Restaurants</a>
+                    }
+                    <form asp-controller="Account" asp-action="Logout" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-link">Sign out</button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login">Log in</a>
+                    <a asp-controller="Account" asp-action="Register" class="btn-primary-sm">Get started</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    @if (TempData["Success"] != null) { <div class="toast toast-success">@TempData["Success"]</div> }
+    @if (TempData["Error"] != null)   { <div class="toast toast-error">@TempData["Error"]</div> }
+
+    <main>@RenderBody()</main>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <span>© @DateTime.Now.Year QRMenu</span>
+            <span>Digital menus for modern restaurants</span>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
